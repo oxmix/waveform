@@ -3,14 +3,15 @@
 /**
  * Waveform generator
  *
- * @version 1.0
+ * @version 1.1
  * @author Oxmix
  * @link http://oxmix.net
  */
 class waveform {
-	private $result = [];
+	public $result = [];
 
 	public function __construct($file) {
+		$tempFileWav = '/tmp/waveform-'.uniqid().'.'.mt_rand().'.wav';
 		try {
 			if (empty($file))
 				throw new Exception('set path to mp3 file');
@@ -18,19 +19,27 @@ class waveform {
 			if (!file_exists($file))
 				throw new Exception('not found mp3 file');
 
-			$data = shell_exec('lame --decode --silent '.$file.' -');
+			shell_exec('lame --decode --silent '.$file.' '.$tempFileWav);
 
-			$sampleRate = unpack('S', substr($data, 24, 4))[1];
+			$f = fopen($tempFileWav, 'r');
+
+			$frameFirst = fread($f, 44);
+
+			$sampleRate = unpack('S', substr($frameFirst, 24, 4))[1];
 
 			if ($sampleRate <= 0)
 				throw new Exception('not correct sample rate');
 
 			$samples = [];
 			$temp = [];
-			for ($i = 44, $j = 0; $i < strlen($data); $i += 4, $j++) {
-				$temp[] = abs(unpack('s', $data[$i].$data[$i + 1])[1]);
+			$j = 0;
+			while (!feof($f)) {
+				$r = fread($f, 4);
+				if (strlen($r) == 0)
+					continue;
+				$temp[] = abs(unpack('s', $r)[1]);
 
-				if ($j % $sampleRate == 0) {
+				if ($j++ % $sampleRate == 0) {
 					$samples[] = array_sum($temp) / count($temp);
 					$temp = [];
 				}
@@ -43,7 +52,9 @@ class waveform {
 			}, $samples);
 
 		} catch (Exception $e) {
-			echo 'waveform error - '.$e->getMessage().PHP_EOL;
+			if (file_exists($tempFileWav))
+				unlink($tempFileWav);
+			throw new Exception($e->getMessage());
 		}
 	}
 
