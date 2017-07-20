@@ -14,10 +14,10 @@ class waveform {
 		$tempFileWav = '/tmp/waveform-'.uniqid().'.'.mt_rand().'.wav';
 		try {
 			if (empty($file))
-				throw new Exception('set path to mp3 file');
+				throw new Exception('set path to mp3|wav file');
 
 			if (!file_exists($file))
-				throw new Exception('not found mp3 file');
+				throw new Exception('not found mp3|wav file');
 
 			shell_exec('lame --decode --silent '.$file.' '.$tempFileWav);
 
